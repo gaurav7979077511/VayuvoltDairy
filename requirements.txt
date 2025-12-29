@@ -6,3 +6,4 @@ oauth2client
 bcrypt
 google-api-python-client
 cloudinary
+streamlit-cookies-manager
