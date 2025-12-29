@@ -16,7 +16,7 @@ import smtplib
 from email.message import EmailMessage  
 from datetime import datetime, timedelta
 import time
-from streamlit_cookies_manager import EncryptedCookieManager
+
 
 
 
@@ -26,13 +26,6 @@ from streamlit_cookies_manager import EncryptedCookieManager
 # ============================================================
 st.set_page_config(page_title="Dairy Farm Management", layout="wide")
 
-cookies = EncryptedCookieManager(
-    prefix="dairy_app",
-    password=st.secrets["cookie_password"]
-)
-
-if not cookies.ready():
-    st.stop()
 
 # ============================================================
 # SESSION STATE DEFAULTS (MUST BE FIRST)
@@ -44,55 +37,11 @@ defaults = {
     "user_name": None,
     "user_role": None,
     "user_accesslevel": None,
-    "last_activity": None
 }
 
 for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
-
-# ============================================================
-# COOKIE → SESSION RESTORE
-# ============================================================
-def restore_session_from_cookie():
-    if not st.session_state.authenticated and cookies.get("authenticated") == "true":
-        st.session_state.authenticated = True
-        st.session_state.user_id = cookies.get("user_id")
-        st.session_state.username = cookies.get("username")
-        st.session_state.user_name = cookies.get("user_name")
-        st.session_state.user_role = cookies.get("user_role")
-        st.session_state.user_accesslevel = cookies.get("user_accesslevel")
-
-    # FALLBACK: mobile refresh protection
-    elif st.session_state.get("authenticated"):
-        # Session already valid, do nothing
-        pass
-
-
-
-restore_session_from_cookie()
-
-# ============================================================
-# ACTIVITY TRACKING
-# ============================================================
-# ================= ACTIVITY TRACKING =================
-INACTIVITY_LIMIT = 120  # seconds
-
-def auto_logout_check():
-    if not st.session_state.authenticated:
-        return
-
-    last = st.session_state.get("last_activity")
-    if last and (time.time() - last > INACTIVITY_LIMIT):
-        logout_user(auto=True)
-
-# ✅ SET activity ONLY once per session (refresh-safe)
-if st.session_state.authenticated:
-    if st.session_state.last_activity is None:
-        st.session_state.last_activity = time.time()
-
-auto_logout_check()
-
 
 
 
@@ -420,19 +369,6 @@ def logout_user(auto=False):
     st.session_state.user_accesslevel = None
     st.session_state.last_activity = None
 
-    # --- Clear cookies properly ---
-    cookies["authenticated"] = ""
-    cookies["user_id"] = ""
-    cookies["username"] = ""
-    cookies["user_name"] = ""
-    cookies["user_role"] = ""
-    cookies["user_accesslevel"] = ""
-    cookies.save()
-
-    if auto:
-        st.warning("Session expired due to inactivity")
-
-    st.rerun()
 
 
 def generate_otp():
@@ -759,13 +695,6 @@ if not st.session_state.authenticated:
         st.session_state.user_role = row["role"]
         st.session_state.last_activity = time.time()
         st.session_state.user_accesslevel = row["accesslevel"]
-        cookies["authenticated"] = "true"
-        cookies["user_id"] = st.session_state.user_id
-        cookies["username"] = st.session_state.username
-        cookies["user_name"] = st.session_state.user_name
-        cookies["user_role"] = st.session_state.user_role
-        cookies["user_accesslevel"] = st.session_state.user_accesslevel
-        cookies.save()
 
 
         st.success(f"✅ Welcome, {row['name']}")
