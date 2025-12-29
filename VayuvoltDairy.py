@@ -63,12 +63,19 @@ def restore_session_from_cookie():
         st.session_state.user_role = cookies.get("user_role")
         st.session_state.user_accesslevel = cookies.get("user_accesslevel")
 
+    # FALLBACK: mobile refresh protection
+    elif st.session_state.get("authenticated"):
+        # Session already valid, do nothing
+        pass
+
+
 
 restore_session_from_cookie()
 
 # ============================================================
 # ACTIVITY TRACKING
 # ============================================================
+# ================= ACTIVITY TRACKING =================
 INACTIVITY_LIMIT = 120  # seconds
 
 def auto_logout_check():
@@ -79,13 +86,13 @@ def auto_logout_check():
     if last and (time.time() - last > INACTIVITY_LIMIT):
         logout_user(auto=True)
 
-# 👉 Set activity ONLY if missing (refresh-safe)
+# ✅ SET activity ONLY once per session (refresh-safe)
 if st.session_state.authenticated:
-    if "last_activity" not in st.session_state:
+    if st.session_state.last_activity is None:
         st.session_state.last_activity = time.time()
 
-# 👉 Now check inactivity
 auto_logout_check()
+
 
 
 
@@ -750,6 +757,7 @@ if not st.session_state.authenticated:
         st.session_state.username = row["username"]
         st.session_state.user_name = row["name"]
         st.session_state.user_role = row["role"]
+        st.session_state.last_activity = time.time()
         st.session_state.user_accesslevel = row["accesslevel"]
         cookies["authenticated"] = "true"
         cookies["user_id"] = st.session_state.user_id
@@ -843,7 +851,7 @@ else:
     if page == "Dashboard":
 
 
-        st.title("📊 Vayuvolt Dairy Farm Dashboard")
+        st.title("📊 VayuVolt Dairy Farm Dashboard")
 
         # ==================================================
         # 🎨 GLOBAL STYLES (READABLE + PROFESSIONAL)
@@ -1102,13 +1110,21 @@ else:
         # ===============================
 
         df_milk = load_milking_data()
-
         pending_milking = []
 
         if not df_milk.empty and {"Date", "Shift"}.issubset(df_milk.columns):
 
+            # Normalize Date
             df_milk["Date"] = pd.to_datetime(df_milk["Date"], errors="coerce")
 
+            # 📌 Range control
+            start_date = df_milk["Date"].min().date()
+            today = dt.date.today()
+            yesterday = today - dt.timedelta(days=1)
+
+            all_dates = pd.date_range(start=start_date, end=yesterday, freq="D")
+
+            # Group existing data
             day_shift = (
                 df_milk
                 .groupby(["Date", "Shift"])
@@ -1116,11 +1132,21 @@ else:
                 .unstack(fill_value=0)
             )
 
-            for date, row in day_shift.iterrows():
-                if row.get("Morning", 0) == 0:
-                    pending_milking.append((date.date(), "Morning"))
-                if row.get("Evening", 0) == 0:
-                    pending_milking.append((date.date(), "Evening"))
+            # ✅ CRITICAL: convert index to pure date
+            day_shift.index = day_shift.index.date
+
+            # 🔁 Check every date till today
+            for d in all_dates:
+                d = d.date()
+
+                # Morning missing
+                if d not in day_shift.index or day_shift.loc[d].get("Morning", 0) == 0:
+                    pending_milking.append((d, "Morning"))
+
+                # Evening missing
+                if d not in day_shift.index or day_shift.loc[d].get("Evening", 0) == 0:
+                    pending_milking.append((d, "Evening"))
+
 
         # ---- UI (ONLY IF EXISTS) ----
         if pending_milking:
