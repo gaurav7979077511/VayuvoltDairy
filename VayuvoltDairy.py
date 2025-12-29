@@ -411,7 +411,7 @@ def logout_user(auto=False):
     if auto:
         st.warning("Session expired due to inactivity")
 
-    st.experimental_rerun()
+    st.rerun()
 
 def generate_otp():
     return str(random.randint(100000, 999999))
