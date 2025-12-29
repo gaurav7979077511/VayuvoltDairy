@@ -757,7 +757,7 @@ else:
     if page == "Dashboard":
 
 
-        st.title("📊 Pure Dairy Farm Dashboard")
+        st.title("📊 Vayuvolt Dairy Farm Dashboard")
 
         # ==================================================
         # 🎨 GLOBAL STYLES (READABLE + PROFESSIONAL)
