@@ -55,13 +55,14 @@ for k, v in defaults.items():
 # COOKIE → SESSION RESTORE
 # ============================================================
 def restore_session_from_cookie():
-    if cookies.get("authenticated") == "true":
+    if not st.session_state.authenticated and cookies.get("authenticated") == "true":
         st.session_state.authenticated = True
         st.session_state.user_id = cookies.get("user_id")
         st.session_state.username = cookies.get("username")
         st.session_state.user_name = cookies.get("user_name")
         st.session_state.user_role = cookies.get("user_role")
         st.session_state.user_accesslevel = cookies.get("user_accesslevel")
+
 
 restore_session_from_cookie()
 
@@ -403,15 +404,29 @@ def verify_password(stored_hash, password):
     return bcrypt.checkpw(password.encode(), stored_hash.encode())
 
 def logout_user(auto=False):
-    st.session_state.clear()
+    # --- Reset auth state safely ---
+    st.session_state.authenticated = False
+    st.session_state.user_id = None
+    st.session_state.username = None
+    st.session_state.user_name = None
+    st.session_state.user_role = None
+    st.session_state.user_accesslevel = None
+    st.session_state.last_activity = None
 
+    # --- Clear cookies properly ---
     cookies["authenticated"] = ""
+    cookies["user_id"] = ""
+    cookies["username"] = ""
+    cookies["user_name"] = ""
+    cookies["user_role"] = ""
+    cookies["user_accesslevel"] = ""
     cookies.save()
 
     if auto:
         st.warning("Session expired due to inactivity")
 
     st.rerun()
+
 
 def generate_otp():
     return str(random.randint(100000, 999999))
