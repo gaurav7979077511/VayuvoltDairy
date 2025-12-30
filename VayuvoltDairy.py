@@ -3865,6 +3865,9 @@ else:
                 (customers["Status"].str.lower() == "active") &
                 (customers["Shift"].isin([shift, "Both"]))
             ]
+            if "bitran_saved" not in st.session_state:
+                st.session_state.bitran_saved = False
+
 
             with st.form("locked_bitran_form"):
 
@@ -3886,12 +3889,15 @@ else:
             # ---------- CANCEL ----------
             if cancel:
                 st.session_state.show_form = None
+                st.session_state.bitran_saved = False
                 st.session_state.pop("locked_bitran_date", None)
                 st.session_state.pop("locked_milk_qty", None)
                 st.rerun()
 
             # ---------- SAVE ----------
-            if save:
+            if save and not st.session_state.bitran_saved:
+
+                st.session_state.bitran_saved = True
 
                 total_entered = round(sum(qty for _, qty in entries), 2)
 
@@ -3900,6 +3906,18 @@ else:
                         f"❌ Delivered {total_entered:.2f} L "
                         f"but milking is {max_qty:.2f} L"
                     )
+                    st.session_state.bitran_saved = False
+                    st.stop()
+
+                # 🛑 DUPLICATE CHECK
+                existing = df_bitran[
+                    (df_bitran["Date"] == date) &
+                    (df_bitran["Shift"] == shift)
+                ]
+
+                if not existing.empty:
+                    st.warning("⚠️ Bitran already saved for this Date & Shift")
+                    st.session_state.bitran_saved = False
                     st.stop()
 
                 ts = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -3917,6 +3935,16 @@ else:
                         ])
 
                 append_bitran_rows(rows)
+
+                st.success("✅ Milk Bitran saved successfully")
+
+                st.cache_data.clear()
+                st.session_state.bitran_saved = False
+                st.session_state.show_form = None
+                st.session_state.pop("locked_bitran_date", None)
+                st.session_state.pop("locked_milk_qty", None)
+                st.rerun()
+
 
                 st.success("✅ Milk Bitran saved successfully")
                 st.cache_data.clear()
