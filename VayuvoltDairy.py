@@ -177,17 +177,6 @@ def safe_cell(val):
         return ""
     return val
 
-@st.cache_data(ttl=30)
-def load_bills():
-    ws = open_billing_sheet()
-    rows = ws.get_all_values()
-
-
-    if not rows or rows[0] != BILLING_HEADER:
-        ws.insert_row(BILLING_HEADER, 1)
-        return pd.DataFrame(columns=BILLING_HEADER)
-
-    return pd.DataFrame(rows[1:], columns=rows[0])
 
 INVESTMENT_HEADER = [
             "InvestmentID",
@@ -303,6 +292,19 @@ MEDICATION_LOG_HEADER = [
 # ============================================================
 # LOAD AUTH DATA
 # ============================================================
+
+@st.cache_data(ttl=30)
+def load_bills():
+    ws = open_billing_sheet()
+    rows = ws.get_all_values()
+
+
+    if not rows or rows[0] != BILLING_HEADER:
+        ws.insert_row(BILLING_HEADER, 1)
+        return pd.DataFrame(columns=BILLING_HEADER)
+
+    return pd.DataFrame(rows[1:], columns=rows[0])
+
 @st.cache_resource
 def get_auth_sheet():
     try:
@@ -1377,8 +1379,9 @@ else:
                     .mean()
                 )
             else:
-                month_total = {}
-                month_avg = {}
+                month_total = pd.Series(dtype=float)
+                month_avg = pd.Series(dtype=float)
+
 
 
             month_avg = (
@@ -1653,8 +1656,8 @@ else:
                         "Category",
                         [
                             "Feed", "Medicine", "Labour", "Electricity",
-                            "Maintenance", "Transport", "Veterinary",
-                            "Equipment", "Other"
+                            "Petrol", "Transport", "Veterinary",
+                            "Equipment","Salary", "Other"
                         ]
                     )
     
@@ -2105,7 +2108,7 @@ else:
             border:1px solid #e5e7eb;
             border-radius:10px;
             padding:8px;
-            height:95px;
+            height:105px;
             box-sizing:border-box;
             box-shadow:0 1px 2px rgba(0,0,0,0.04);
             font-family:Arial, sans-serif;
@@ -2370,7 +2373,7 @@ else:
                         paid_date = now.strftime("%Y-%m-%d")
                     else:
                         status = "Partially Paid"
-                        paid_date = ""   # keep blank
+                        paid_date = now.strftime("%Y-%m-%d")
 
 
                     ws = open_billing_sheet()
@@ -2519,6 +2522,8 @@ else:
         # CONSTANTS
         # ======================================================
         
+        if "show_whatsapp_buttons" not in st.session_state:
+            st.session_state.show_whatsapp_buttons = False
 
         # ======================================================
         # SHEET HELPERS
@@ -2589,6 +2594,91 @@ else:
                 missing_dates,
                 daily_pattern
             )
+        def fmt_date(d):
+            return pd.to_datetime(d).strftime("%d-%m-%Y")
+
+
+        def build_whatsapp_message(bill_row):
+            customer = bill_row["CustomerName"].split()[0]
+            bill_id = bill_row["BillID"][-10:]
+            bill_date = fmt_date(bill_row["GeneratedOn"])
+
+            from_date = pd.to_datetime(bill_row["FromDate"])
+            to_date = pd.to_datetime(bill_row["ToDate"])
+
+            from_day = from_date.day
+            to_day = to_date.day
+            from_month = from_date.strftime("%b").upper()
+            to_month = to_date.strftime("%b").upper()
+
+            due_date = fmt_date(bill_row["DueDate"])
+
+            total_amount = float(bill_row["BillAmount"])
+            paid_amount = float(bill_row.get("PaidAmount", 0))
+            balance_amount = float(bill_row["BalanceAmount"])
+
+            total_litre = bill_row.get("TotalMilk", "")
+            rate = bill_row.get("RatePerLitre", "")
+
+            missing_days = str(bill_row.get("DailyMilkPattern", "")).strip()
+
+            # ---------------- PENDING BILL ----------------
+            if bill_row["BillStatus"] == "Payment Pending":
+
+                msg = textwrap.dedent(f"""
+                नमस्ते {customer} जी 🙏
+
+                आपके दूध बिल की जानकारी नीचे दी गई है:
+
+                🧾 बिल नं: {bill_id}
+                📆 बिल तिथि: {bill_date}
+
+                📅 अवधि: {from_day} {from_month} से {to_day} {to_month}
+                🥛 कुल दूध: {total_litre} लीटर
+                💵 दर: ₹{rate}/लीटर
+                💰 कुल राशि: ₹{total_amount:,.0f}
+                """).strip()
+
+                if missing_days:
+                    msg += textwrap.dedent(f"""
+                    ❌ दूध नहीं मिला: {missing_days}""")
+
+                msg += textwrap.dedent(f"""
+
+                ⏰ अंतिम तिथि: {due_date}
+
+                कृपया समय पर भुगतान करने की कृपा करें 🙏  
+                धन्यवाद
+                """)
+
+                return msg.strip()
+
+            # ---------------- PARTIALLY PAID ----------------
+            else:
+                paid_date_raw = bill_row.get("PaidDate", "")
+                paid_date = fmt_date(paid_date_raw) if paid_date_raw else ""
+
+                msg = textwrap.dedent(f"""
+                नमस्ते {customer} जी 🙏
+
+                क्षमा करें, आपको परेशान करने के लिए।
+                आपके दूध बिल की जानकारी नीचे दी गई है:
+
+                🧾 बिल नं: {bill_id}
+                📆 बिल तिथि: {bill_date}
+
+                💰 कुल राशि: ₹{total_amount:,.0f}
+                ✅ जमा राशि: ₹{paid_amount:,.0f}
+                📅 भुगतान तिथि: {paid_date}
+                ⚠️ शेष राशि: ₹{balance_amount:,.0f}
+
+                ⏰ अंतिम तिथि: {due_date}
+
+                कृपया शेष राशि जमा करने की कृपा करें 🙏
+                धन्यवाद
+                """)
+
+                return msg.strip()
 
 
 
@@ -2598,6 +2688,10 @@ else:
         customers_df = get_customers_df()
         bills_df = load_bills()
         bitran_df = load_bitran_df()
+
+        if "WhatsAppLastSentOn" not in bills_df.columns:
+            bills_df["WhatsAppLastSentOn"] = ""
+
 
 
         customers_df["RatePerLitre"] = pd.to_numeric(
@@ -2885,6 +2979,24 @@ else:
         # ======================================================
 
         st.subheader("📋 Bills")
+        left, right = st.columns([4, 1])
+
+        with right:
+            toggle_label = (
+                "📲 Show WhatsApp Reminders"
+                if not st.session_state.show_whatsapp_buttons
+                else "❌ Hide WhatsApp Reminders"
+            )
+
+            if st.button(toggle_label, use_container_width=True):
+                st.session_state.show_whatsapp_buttons = not st.session_state.show_whatsapp_buttons
+                st.rerun()  # 🔥 forces immediate UI refresh
+
+        customer_phone_map = dict(
+            zip(customers_df["CustomerID"], customers_df.get("Phone", ""))
+        )
+
+
 
         # ---------- Safety checks ----------
         if bills_df.empty:
@@ -3046,7 +3158,78 @@ else:
 
             with cols[i % 3]:
                 components.html(card_html, height=235)
+                if st.session_state.show_whatsapp_buttons:
 
+                    raw_phone = str(customer_phone_map.get(r["CustomerID"], "")).strip()
+
+                    # Remove +, spaces, hyphens
+                    raw_phone = raw_phone.replace("+", "").replace(" ", "").replace("-", "")
+
+                    phone = ""
+                    has_phone = False
+
+                    # Case 1: 10-digit mobile → add 91
+                    if raw_phone.isdigit() and len(raw_phone) == 10:
+                        phone = "91" + raw_phone
+                        has_phone = True
+
+                    # Case 2: Already with 91 and 12 digits
+                    elif raw_phone.isdigit() and len(raw_phone) == 12 and raw_phone.startswith("91"):
+                        phone = raw_phone
+                        has_phone = True
+
+                    # Else → invalid number
+                    else:
+                        phone = ""
+                        has_phone = False
+
+                    is_paid = r["BillStatus"] == "Paid"
+
+                    today = pd.Timestamp.today().normalize()
+
+                    last_sent_raw = r.get("WhatsAppLastSentOn", "")
+                    last_sent = pd.to_datetime(last_sent_raw, errors="coerce") if str(last_sent_raw).strip() else None
+
+
+                    disable_button = is_paid or not has_phone
+
+                    if not disable_button:
+                        msg = build_whatsapp_message(r)
+                        encoded_msg = urllib.parse.quote(msg)
+                        whatsapp_url = f"https://wa.me/{phone}?text={encoded_msg}"
+
+                        # Step 1: Show WhatsApp link (NO side effects)
+                        st.markdown(
+                            f"""
+                            <div style="display:flex; justify-content:center; margin-top:8px;margin-bottom:8px; ">
+                                <a href="{whatsapp_url}" target="_blank"
+                                style="text-decoration:none; width:100%; max-width:480px; margin-left:auto; margin-right:auto;">
+                                    <div style="
+                                        background:#ffffff;
+                                        border:2px solid #25D366;
+                                        color:#25D366;
+                                        padding:12px 16px;
+                                        border-radius:14px;
+                                        text-align:center;
+                                        font-weight:700;
+                                        font-size:14px;
+                                        display:flex;
+                                        align-items:center;
+                                        justify-content:center;
+                                        gap:10px;
+                                        box-shadow:0 4px 10px rgba(0,0,0,0.15);
+                                    ">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
+                                            width="24"
+                                            height="24"
+                                            style="vertical-align:middle;">
+                                        <span>Send WhatsApp Reminder</span>
+                                    </div>
+                                </a>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
 
 
     
@@ -3503,6 +3686,16 @@ else:
                 st.rerun()
 
             if create:
+                # ---------------- PHONE VALIDATION ----------------
+                phone = phone.strip()
+
+                if not phone.isdigit():
+                    st.error("📵 Phone number must contain only digits")
+                    st.stop()
+
+                if len(phone) != 10:
+                    st.error("📵 Phone number must be exactly 10 digits")
+                    st.stop()
                 cid = f"CUST{dt.datetime.now().strftime('%Y%m%d%H%M%S')}"
                 ws = open_customer_sheet()
                 ws.append_row([
@@ -3579,6 +3772,17 @@ else:
                 st.rerun()
             
             if update:
+                # ---------------- PHONE VALIDATION ----------------
+                e_phone = e_phone.strip()
+
+                if not e_phone.isdigit():
+                    st.error("📵 Phone number must contain only digits")
+                    st.stop()
+
+                if len(e_phone) != 10:
+                    st.error("📵 Phone number must be exactly 10 digits")
+                    st.stop()
+                
                 update_customer_by_id(
                     row["CustomerID"],
                     {
@@ -5849,6 +6053,78 @@ else:
         st.divider()
 
         # ======================================================
+        # 👑 ADMIN – ALL USERS WALLET GLANCE
+        # ======================================================
+        if st.session_state.user_role == "Admin":
+
+            st.subheader("👥 Users Wallet Overview")
+
+            # Ensure numeric conversion
+            wallet_df["Amount"] = pd.to_numeric(wallet_df["Amount"], errors="coerce").fillna(0)
+
+            # Exclude admin from list
+            non_admin_df = wallet_df[wallet_df["UserID"] != st.session_state.user_id].copy()
+
+            users = non_admin_df["UserID"].unique()
+
+
+            cards_per_row = 3
+            rows = [users[i:i+cards_per_row] for i in range(0, len(users), cards_per_row)]
+
+            for row in rows:
+                cols = st.columns(len(row))
+
+                for col, uid in zip(cols, row):
+
+                    u_df = non_admin_df[non_admin_df["UserID"] == uid]
+
+                    if u_df.empty:
+                        continue
+
+                    name = u_df["Name"].iloc[0]
+
+                    credit = u_df[
+                        (u_df["TxnType"] == "CREDIT") &
+                        (u_df["TxnStatus"] == "COMPLETED")
+                    ]["Amount"].sum()
+
+                    debit = u_df[
+                        (u_df["TxnType"] == "DEBIT") &
+                        (u_df["TxnStatus"] == "COMPLETED")
+                    ]["Amount"].sum()
+
+                    blocked = u_df[
+                        (u_df["TxnType"] == "DEBIT") &
+                        (u_df["TxnStatus"] == "PENDING")
+                    ]["Amount"].sum()
+
+                    available = credit - debit - blocked
+
+                    with col:
+                        st.markdown(
+                            f"""
+                            <div style="
+                                padding:14px;
+                                border-radius:14px;
+                                background:linear-gradient(135deg,#6b7280,#374151);
+                                color:white;
+                                font-family:Inter,system-ui,sans-serif;
+                                box-shadow:0 6px 14px rgba(0,0,0,0.25);
+                            ">
+                                <div style="font-size:14px;font-weight:800;">{name}</div>
+                                <div style="margin-top:8px;font-size:13px;">
+                                    💰 Available: ₹ {available:,.2f}
+                                </div>
+                                {"<div style='font-size:12px;opacity:.85;'>⛔ Blocked: ₹ " + f"{blocked:,.2f}</div>" if blocked > 0 else ""}
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+            st.divider()
+
+
+
+        # ======================================================
         # SEND MONEY (INITIATE)
         # ======================================================
         # Create columns (left space + button column)
@@ -5866,6 +6142,7 @@ else:
         users_df = dairy_users_df[
             dairy_users_df["userid"] != st.session_state.user_id
         ]
+    
 
         
 
