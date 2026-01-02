@@ -1509,20 +1509,59 @@ else:
 
         st.divider()
         #------------- Daily Milk Summary-----------
+        st.subheader("📊 Daily Milking Summary")
+        filter_option = st.radio(
+            "Show data for",
+            ["Last", "1 W", "1 M", "3 M", "All"],
+            index=1,  # ✅ default = 1 Week
+            horizontal=True
+        )
+
+        today = pd.Timestamp.today().normalize()
+
+        if filter_option == "Last":
+            latest_date = df_milk["Date"].max()
+            df_milk = df_milk[df_milk["Date"] == latest_date]
+
+        elif filter_option == "1 W":
+            df_milk = df_milk[df_milk["Date"] >= today - pd.Timedelta(days=7)]
+
+        elif filter_option == "1 M":
+            df_milk = df_milk[df_milk["Date"] >= today - pd.DateOffset(months=1)]
+
+        elif filter_option == "3 M":
+            df_milk = df_milk[df_milk["Date"] >= today - pd.DateOffset(months=3)]
+
+        # "All" → no filter needed
+
+
         if not df_milk.empty:
             df_milk["MilkQuantity"] = pd.to_numeric(
                 df_milk["MilkQuantity"], errors="coerce"
             ).fillna(0)
+
+            df_milk["Date"] = pd.to_datetime(df_milk["Date"], errors="coerce")
+            shift_order = {"Morning": 1, "Evening": 2}
+
     
             summary = (
                 df_milk
                 .groupby(["Date", "Shift"])["MilkQuantity"]
                 .sum()
                 .reset_index()
-                .sort_values("Date", ascending=False)
             )
+
+            summary["ShiftOrder"] = summary["Shift"].map(shift_order)
+
+            summary = summary.sort_values(
+                by=["Date", "ShiftOrder"],
+                ascending=[False, False]   # latest date first, Evening after Morning
+            )
+
+            summary = summary.drop(columns=["ShiftOrder"])
+
     
-            st.subheader("📊 Daily Milking Summary")
+            
     
             cols = st.columns(4)
     
@@ -1657,7 +1696,7 @@ else:
                         [
                             "Feed", "Medicine", "Labour", "Electricity",
                             "Petrol", "Transport", "Veterinary",
-                            "Equipment","Salary", "Cow_Shed","Other"
+                            "Equipment","Salary","Cow_Shed", "Other"
                         ]
                     )
     
@@ -4276,22 +4315,62 @@ else:
         df_bitran = load_bitran_data()
         
         if not df_bitran.empty and "MilkDelivered" in df_bitran.columns:
+
+            st.subheader("📊 Daily Summary")
+            df_bitran["Date"] = pd.to_datetime(df_bitran["Date"], errors="coerce")
+
+            filter_option = st.radio(
+                "Filter",
+                ["Last", "1 W", "1 M", "3 M", "All"],
+                horizontal=True,
+                index=1  # default = 1 Week
+            )
+
+            today = pd.Timestamp.today().normalize()
+
+            if filter_option == "Last":
+                start_date = today
+            elif filter_option == "1 W":
+                start_date = today - pd.Timedelta(days=7)
+            elif filter_option == "1 M":
+                start_date = today - pd.DateOffset(months=1)
+            elif filter_option == "3 M":
+                start_date = today - pd.DateOffset(months=3)
+            else:  # All
+                start_date = None
+
+            if start_date is not None:
+                df_bitran = df_bitran[df_bitran["Date"] >= start_date]
+
+
         
             df_bitran["MilkDelivered"] = (
                 pd.to_numeric(df_bitran["MilkDelivered"], errors="coerce")
                 .fillna(0)
             )
+            
+
         
+            shift_order = {"Morning": 1, "Evening": 2}
+
             summary = (
                 df_bitran
                 .groupby(["Date", "Shift"])["MilkDelivered"]
                 .sum()
                 .reset_index()
-                .sort_values("Date", ascending=False)
             )
+
+            summary["ShiftOrder"] = summary["Shift"].map(shift_order)
+
+            summary = summary.sort_values(
+                by=["Date", "ShiftOrder"],
+                ascending=[False, False]  # latest date first, Evening after Morning
+            )
+
+            summary = summary.drop(columns=["ShiftOrder"])
             summary["MilkDelivered"] = summary["MilkDelivered"].round(2)
+
         
-            st.subheader("📊 Daily Summary")
         
             cols = st.columns(4)
         
