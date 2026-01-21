@@ -474,7 +474,8 @@ def load_investments():
 
 def open_milking_sheet():
             return open_sheet(MAIN_SHEET_ID, MILKING_TAB)
-    
+
+@st.cache_data(ttl=120)  
 def load_milking_data():
     ws = open_milking_sheet()
     rows = ws.get_all_values()
