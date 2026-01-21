@@ -478,12 +478,25 @@ def open_milking_sheet():
 def load_milking_data():
     ws = open_milking_sheet()
     rows = ws.get_all_values()
-    
+
     if not rows or rows[0] != MILKING_HEADER:
         ws.insert_row(MILKING_HEADER, 1)
         return pd.DataFrame(columns=MILKING_HEADER)
-    
-    return pd.DataFrame(rows[1:], columns=rows[0])
+
+    df = pd.DataFrame(rows[1:], columns=rows[0])
+
+    # 🔥 CRITICAL FIX: force correct datatypes
+    if "MilkQuantity" in df.columns:
+        df["MilkQuantity"] = pd.to_numeric(df["MilkQuantity"], errors="coerce").fillna(0)
+
+    if "Date" in df.columns:
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.date
+
+    if "Shift" in df.columns:
+        df["Shift"] = df["Shift"].astype(str).str.strip()
+
+    return df
+
     
 def append_milking_rows(rows):
     ws = open_milking_sheet()
@@ -879,13 +892,19 @@ else:
 
             today = dt.date.today()
             month_start = today.replace(day=1)
+            month_start = pd.to_datetime(month_start)
 
             def filter_this_month(df, date_col):
                 if df.empty or date_col not in df:
                     return df.iloc[0:0]
+
                 df = df.copy()
                 df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
-                return df[df[date_col].dt.date >= month_start]
+
+                month_start = pd.Timestamp.today().replace(day=1).normalize()
+
+                return df[df[date_col] >= month_start]
+
 
             # Filter monthly data
             m_milking = filter_this_month(milking_df, "Date")
@@ -3929,6 +3948,9 @@ else:
                 ws.append_row(r, value_input_option="USER_ENTERED")
 
         df_bitran = load_bitran_data()
+        if not df_bitran.empty:
+            df_bitran["Date"] = pd.to_datetime(df_bitran["Date"], errors="coerce")
+
 
         if not df_bitran.empty:
             df_bitran["MilkDelivered"] = pd.to_numeric(
@@ -4007,6 +4029,14 @@ else:
         pending_tasks = []
         df_milk = load_milking_data()
 
+        # Force clean Date and Shift in both datasets
+        df_milk["Date"] = pd.to_datetime(df_milk["Date"]).dt.date
+        df_milk["Shift"] = df_milk["Shift"].str.strip()
+
+        df_bitran["Date"] = pd.to_datetime(df_bitran["Date"]).dt.date
+        df_bitran["Shift"] = df_bitran["Shift"].str.strip()
+
+
         # total milking per day + shift
         milk_grp = (
             df_milk
@@ -4022,6 +4052,7 @@ else:
             .sum()
             .reset_index()
         )
+
 
         for _, row in milk_grp.iterrows():
             date = row["Date"]
@@ -4218,6 +4249,9 @@ else:
                     continue
 
                 # ---- Monthly stats (CURRENT MONTH ONLY) ----
+                c_df["Date"] = pd.to_datetime(c_df["Date"], errors="coerce")
+                month_start = pd.to_datetime(month_start)
+
                 m_df = c_df[c_df["Date"] >= month_start]
                 m_total = m_df["MilkDelivered"].sum()
 
@@ -4313,6 +4347,10 @@ else:
 
         # ===================== SUMMARY CARDS =====================
         df_bitran = load_bitran_data()
+
+        if not df_bitran.empty:
+            df_bitran["Date"] = pd.to_datetime(df_bitran["Date"], errors="coerce")
+
         
         if not df_bitran.empty and "MilkDelivered" in df_bitran.columns:
 
