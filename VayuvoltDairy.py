@@ -2658,6 +2658,34 @@ else:
                 missing_dates,
                 daily_pattern
             )
+        #------
+        def compress_dates(date_list):
+            if not date_list:
+                return ""
+        
+            dates = sorted(set(int(d) for d in date_list))
+        
+            ranges = []
+            start = dates[0]
+            prev = dates[0]
+        
+            for d in dates[1:]:
+                if d == prev + 1:
+                    prev = d
+                else:
+                    if start == prev:
+                        ranges.append(f"{start}")
+                    else:
+                        ranges.append(f"{start}-{prev}")
+                    start = d
+                    prev = d
+        
+            if start == prev:
+                ranges.append(f"{start}")
+            else:
+                ranges.append(f"{start}-{prev}")
+        
+            return ", ".join(ranges)
         def fmt_date(d):
             return pd.to_datetime(d).strftime("%d-%m-%Y")
 
@@ -2908,7 +2936,7 @@ else:
                             c = p["cust"]
                             if not selected.get(c["CustomerID"]):
                                 continue
-                            daily_pattern_str = ",".join(map(str, p["missing"]))
+                            daily_pattern_str = compress_dates(p["missing"])
                             rows_to_add.append([
                                 f"BILL{dt.datetime.now().strftime('%Y%m%d%H%M%S%f')}",
                                 safe(c["CustomerID"]),
@@ -3008,7 +3036,7 @@ else:
 
                     if st.button("✅ Generate Bill"):
                         ws = open_billing_sheet()
-                        daily_pattern_str = ",".join(map(str, missing))
+                        daily_pattern_str = compress_dates(missing)
                         ws.append_row(
                             [
                                 f"BILL{dt.datetime.now().strftime('%Y%m%d%H%M%S%f')}",
@@ -3127,18 +3155,14 @@ else:
 
             DailyMilkPattern_html = ""
             if "DailyMilkPattern" in r and pd.notna(r["DailyMilkPattern"]) and r["DailyMilkPattern"]:
-                for d in str(r["DailyMilkPattern"]).split(","):
-                    DailyMilkPattern_html += f"""
-                    <span style="
-                        padding:2px 6px;
-                        background:#ffffff33;
-                        border-radius:6px;
-                        font-size:11px;
-                        margin-right:4px;
-                        margin-top:4px;
-                        display:inline-block;
-                    ">{d.strip()}</span>
+                if "DailyMilkPattern" in r and pd.notna(r["DailyMilkPattern"]) and r["DailyMilkPattern"]:
+                    DailyMilkPattern_html = f"""
+                    <div style="font-size:12px;opacity:0.9;margin-top:4px;">
+                        ❌ No milk: {r["DailyMilkPattern"]}
+                    </div>
                     """
+                else:
+                    DailyMilkPattern_html = "<span style='font-size:11px;opacity:.9;'>No gaps</span>"
             else:
                 DailyMilkPattern_html = "<span style='font-size:11px;opacity:.9;'>No daily_pattern</span>"
 
