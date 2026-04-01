@@ -1412,15 +1412,20 @@ else:
                 .mean()
             )
             # ---------------- SHOW ONLY COWS WITH MILK THIS MONTH ----------------
+            # ---------------- SHOW ONLY COWS WITH MILK THIS MONTH ----------------
             if not month_df.empty:
                 valid_cows = set(
                     month_total[month_total > 0].index.astype(str)
                 )
             else:
                 valid_cows = set()
-
+            
             # Filter cows based on data, NOT status
             cows_df = cows_df[cows_df["CowID"].isin(valid_cows)]
+            
+            # 🔥 FIX HERE
+            month_total.index = month_total.index.astype(str).str.strip()
+            
             cows_df = cows_df.merge(
                 month_total.rename("MonthMilk"),
                 left_on="CowID",
