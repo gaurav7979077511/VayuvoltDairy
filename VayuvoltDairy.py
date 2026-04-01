@@ -3154,7 +3154,16 @@ else:
                 """
             #----
             DailyMilkPattern_html = ""
+
             if "DailyMilkPattern" in r and pd.notna(r["DailyMilkPattern"]) and r["DailyMilkPattern"]:
+                
+                # 👉 Add label before pattern
+                DailyMilkPattern_html += """
+                <div style="font-size:11px;margin-bottom:4px;opacity:0.9;">
+                    ❌ Milk Gap:
+                </div>
+                """
+            
                 for d in str(r["DailyMilkPattern"]).split(","):
                     DailyMilkPattern_html += f"""
                     <span style="
@@ -3167,8 +3176,14 @@ else:
                         display:inline-block;
                     ">{d.strip()}</span>
                     """
+            
             else:
-                DailyMilkPattern_html = "<span style='font-size:11px;opacity:.9;'>No daily_pattern</span>"
+                # 👉 Add green tick
+                DailyMilkPattern_html = """
+                <span style="font-size:11px;opacity:.9;">
+                    ✅ No Gap
+                </span>
+                """
 
 
             card_html = f"""
