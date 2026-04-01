@@ -2676,14 +2676,14 @@ else:
                     if start == prev:
                         ranges.append(f"{start}")
                     else:
-                        ranges.append(f"{start}-{prev}")
+                        ranges.append(f"{start} → {prev}")
                     start = d
                     prev = d
         
             if start == prev:
                 ranges.append(f"{start}")
             else:
-                ranges.append(f"{start}-{prev}")
+                ranges.append(f"{start} → {prev}")
         
             return ", ".join(ranges)
         def fmt_date(d):
