@@ -2824,7 +2824,7 @@ else:
 
                 month = st.selectbox(
                     "Select Month",
-                    pd.date_range(end=today, periods=3, freq="M").strftime("%Y-%m")
+                    pd.date_range(end=today, periods=3, freq="ME").strftime("%Y-%m")
                 )
 
                 y, m = map(int, month.split("-"))
