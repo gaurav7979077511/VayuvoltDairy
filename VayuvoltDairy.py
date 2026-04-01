@@ -2993,7 +2993,7 @@ else:
                         )
 
 
-                    amount = round(total * rate, 2)
+                    amount = round(total * rate)
                     if amount <= 0:
                         st.error("❌ Bill amount is zero. Please check milk delivery or rate.")
                         st.stop()
