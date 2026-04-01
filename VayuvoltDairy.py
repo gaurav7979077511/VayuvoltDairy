@@ -3154,21 +3154,22 @@ else:
                 """
             #----
             DailyMilkPattern_html = ""
-                if "DailyMilkPattern" in r and pd.notna(r["DailyMilkPattern"]) and r["DailyMilkPattern"]:
-                    for d in str(r["DailyMilkPattern"]).split(","):
-                        DailyMilkPattern_html += f"""
-                        <span style="
-                            padding:2px 6px;
-                            background:#ffffff33;
-                            border-radius:6px;
-                            font-size:11px;
-                            margin-right:4px;
-                            margin-top:4px;
-                            display:inline-block;
-                        ">{d.strip()}</span>
-                        """
-                else:
-                    DailyMilkPattern_html = "<span style='font-size:11px;opacity:.9;'>No daily_pattern</span>"
+            if "DailyMilkPattern" in r and pd.notna(r["DailyMilkPattern"]) and r["DailyMilkPattern"]:
+                for d in str(r["DailyMilkPattern"]).split(","):
+                    DailyMilkPattern_html += f"""
+                    <span style="
+                        padding:2px 6px;
+                        background:#ffffff33;
+                        border-radius:6px;
+                        font-size:11px;
+                        margin-right:4px;
+                        margin-top:4px;
+                        display:inline-block;
+                    ">{d.strip()}</span>
+                    """
+            else:
+                DailyMilkPattern_html = "<span style='font-size:11px;opacity:.9;'>No daily_pattern</span>"
+
 
             card_html = f"""
             <div style="
