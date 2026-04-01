@@ -3160,7 +3160,7 @@ else:
                 # 👉 Add label before pattern
                 DailyMilkPattern_html += """
                 <div style="font-size:11px;margin-bottom:4px;opacity:0.9;">
-                    ❌ Milk Gap:
+                    ❌ Milk Gap Date:
                 </div>
                 """
             
