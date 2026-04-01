@@ -3181,7 +3181,7 @@ else:
                 # 👉 Add green tick
                 DailyMilkPattern_html = """
                 <span style="font-size:11px;opacity:.9;">
-                    ✅ No Gap
+                    ✅ Milk Delivered Daily
                 </span>
                 """
 
