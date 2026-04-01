@@ -3152,19 +3152,17 @@ else:
                     Pending ₹ {float(r['BalanceAmount']):,.0f}
                 </span>
                 """
-
+            #----
             DailyMilkPattern_html = ""
-            if "DailyMilkPattern" in r and pd.notna(r["DailyMilkPattern"]) and r["DailyMilkPattern"]:
-                if "DailyMilkPattern" in r and pd.notna(r["DailyMilkPattern"]) and r["DailyMilkPattern"]:
-                    DailyMilkPattern_html = f"""
-                    <div style="font-size:12px;opacity:0.9;margin-top:4px;">
-                        ❌ No milk: {r["DailyMilkPattern"]}
-                    </div>
-                    """
-                else:
-                    DailyMilkPattern_html = "<span style='font-size:11px;opacity:.9;'>No gaps</span>"
+
+            if "DailyMilkPattern" in r and pd.notna(r["DailyMilkPattern"]) and str(r["DailyMilkPattern"]).strip():
+                DailyMilkPattern_html = f"""
+                <div style="font-size:12px;opacity:0.9;margin-top:4px;">
+                    ❌ No milk: {r["DailyMilkPattern"]}
+                </div>
+                """
             else:
-                DailyMilkPattern_html = "<span style='font-size:11px;opacity:.9;'>No daily_pattern</span>"
+                DailyMilkPattern_html = "<span style='font-size:11px;opacity:.9;'>No gaps</span>"
 
             card_html = f"""
             <div style="
